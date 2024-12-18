@@ -1,7 +1,7 @@
 # Backup tool
 
 ```
-Usage: backup.bb [options]
+Usage: pg-backup.bb [options]
 A utility for creating and managing PostgreSQL database backups.
 Options:
   -p, --port     5432      PostgreSQL port
