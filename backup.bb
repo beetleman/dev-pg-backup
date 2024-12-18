@@ -72,33 +72,38 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def cli-spec
-  {:spec {:port {:coerce :long
-                 :alias :p
-                 :desc "PostgreSQL port"
-                 :default 5432
-                 :valid pos?}
-          :password {:desc "PostgreSQL password"
+  {:spec {:port     {:coerce  :long
+                     :alias   :p
+                     :desc    "PostgreSQL port"
+                     :default 5432
+                     :valid   pos?}
+          :password {:desc    "PostgreSQL password"
+                     :alias   :P
                      :default "postgres"}
-          :user {:desc "PostgreSQL user"
-                 :default "postgres"}
-          :host {:alias :h
-                 :desc "PostgreSQL host"
-                 :default "localhost"}
-          :help {:coerce :boolean
-                 :desc "Help message"}
-          :list {:coerce :boolean
-                 :alias :l
-                 :desc "List db and backups"}
-          :backup {:alias :b
-                   :desc "Create db backup"}
-          :restore {:alias :r
-                    :desc "Restore db from backup"}}})
+          :user     {:desc    "PostgreSQL user"
+                     :alias   :U
+                     :default "postgres"}
+          :host     {:alias   :H
+                     :desc    "PostgreSQL host"
+                     :default "localhost"}
+          :help     {:coerce :boolean
+                     :alias  :h
+                     :desc   "Help message"}
+          :list     {:coerce :boolean
+                     :alias  :l
+                     :desc   "List db and backups"}
+          :backup   {:alias :b
+                     :desc  "Create db backup"}
+          :restore  {:alias :r
+                     :desc  "Restore db from backup"}}})
 
 (defn run-help []
-  (println "Usage: backup.bb [options]")
+  (println "Usage:" *file* "[options]")
   (println "A utility for creating and managing PostgreSQL database backups.")
+  (println)
   (println "Options:")
   (println (cli/format-opts cli-spec))
+  (println)
   (println "Note: This utility is for development purposes only."
            "Backups are stored as databases.")
   (println "It does not protect against data corruption but can be used"
