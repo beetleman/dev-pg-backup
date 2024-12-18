@@ -22,22 +22,34 @@
   (-> (select-keys opts [:host :user :password :port])
       (assoc :dbtype "postgresql")))
 
-(defn list-db [db]
+(defn list-db [conn]
   (mapv :pg_database/datname
-        (pg/execute! db ["SELECT datname FROM pg_database"])))
+        (pg/execute! conn ["SELECT datname FROM pg_database"])))
 
-(defn create-db-with-template [db template-name db-name]
-  (pg/execute! db [(format "CREATE DATABASE \"%s\" WITH TEMPLATE \"%s\""
-                           db-name
-                           template-name)]))
+(defn exists-db? [conn db-name]
+  (contains? (set (list-db conn)) db-name))
 
-(defn rename-db [db db-name db-new-name]
-  (pg/execute! db [(format "ALTER DATABASE \"%s\" RENAME TO \"%s\""
-                           db-name
-                           db-new-name)]))
+(defn ensure-db-exists! [conn db-name]
+  (when-not (exists-db? conn db-name)
+    (throw (ex-info "Db not exists" {:db-name db-name}))))
 
-(defn exists-db? [db db-name]
-  (contains? (set (list-db db)) db-name))
+(defn ensure-db-not-exists! [conn db-name]
+  (when (exists-db? conn db-name)
+    (throw (ex-info "Db exists" {:db-name db-name}))))
+
+(defn create-db-with-template [conn template-name db-name]
+  (ensure-db-exists! conn template-name)
+  (ensure-db-not-exists! conn db-name)
+  (pg/execute! conn [(format "CREATE DATABASE \"%s\" WITH TEMPLATE \"%s\""
+                             db-name
+                             template-name)]))
+
+(defn rename-db [conn db-name db-new-name]
+  (ensure-db-exists! conn db-name)
+  (ensure-db-not-exists! conn db-new-name)
+  (pg/execute! conn [(format "ALTER DATABASE \"%s\" RENAME TO \"%s\""
+                             db-name
+                             db-new-name)]))
 
 (def backup-db-re #"__backup-\d{4}-\d{2}-\d{2}-\d{10}-(.+)")
 
@@ -83,40 +95,47 @@
                     :desc "Restore db from backup"}}})
 
 (defn run-help []
-  (println (cli/format-opts cli-spec)))
+  (println "Usage: backup.bb [options]")
+  (println "A utility for creating and managing PostgreSQL database backups.")
+  (println "Options:")
+  (println (cli/format-opts cli-spec))
+  (println "Note: This utility is for development purposes only."
+           "Backups are stored as databases.")
+  (println "It does not protect against data corruption but can be used"
+           "to reset the development environment."))
 
-(defn run-list [db]
-  (let [l (list-db db)
+(defn run-list [conn]
+  (let [l (list-db conn)
         by-backup (group-by backup-of l)]
     (doseq [n (get by-backup nil)]
       (println n)
       (doseq [bn (get by-backup n)]
         (println "\t" bn)))))
 
-(defn run-backup [db db-name]
+(defn run-backup [conn db-name]
   (let [bn (backup-db-name db-name)]
     (println "DB:\t" db-name "\nBackup:\t" bn)
-    (create-db-with-template db db-name bn)))
+    (create-db-with-template conn db-name bn)))
 
-(defn run-restore [db db-backup-name]
+(defn run-restore [conn db-backup-name]
   (if-let [db-name (backup-of db-backup-name)]
     (let [new-backup (backup-db-name db-name)]
-      (rename-db db db-name new-backup)
+      (rename-db conn db-name new-backup)
       (try
-        (create-db-with-template db db-backup-name db-name)
+        (create-db-with-template conn db-backup-name db-name)
         (catch Exception e
-          (rename-db db new-backup db-name)
+          (rename-db conn new-backup db-name)
           (throw e))))
     (println "Not backup: " db-backup-name)))
 
 (defn main [args]
   (let [opts (cli/parse-opts args cli-spec)
-        db (make-conn opts)]
+        conn (make-conn opts)]
     (cond
       (opts :help) (run-help)
-      (opts :list) (run-list db)
-      (opts :backup) (run-backup db (opts :backup))
-      (opts :restore) (run-restore db (opts :restore))
+      (opts :list) (run-list conn)
+      (opts :backup) (run-backup conn (opts :backup))
+      (opts :restore) (run-restore conn (opts :restore))
       :else (run-help))))
 
 (main *command-line-args*)
