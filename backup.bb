@@ -88,9 +88,9 @@
                  :desc "Help message"}
           :list {:coerce :boolean
                  :alias :l
-                 :desc "list db"}
+                 :desc "List db and backups"}
           :backup {:alias :b
-                   :desc "create db backup"}
+                   :desc "Create db backup"}
           :restore {:alias :r
                     :desc "Restore db from backup"}}})
 
